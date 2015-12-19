@@ -55,7 +55,7 @@ class SubDataSink(GstBase.BaseSink):
 		format_data = self.parse_metadata(self.decode_metadata(raw_data))
 		#self.event_callback("data", "text", str(format_data))
 		#testing with speed first
-		self.event_callback("data", "speeed", format_data["Speed"])
+		self.event_callback("data", "speed", format_data["Speed"])
 		return Gst.FlowReturn.OK
 
 class RoadHawkDataDecoder(abstract_decoder.AbstractDataDecoder):
