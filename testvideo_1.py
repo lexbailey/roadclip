@@ -3,24 +3,12 @@
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst, Gtk, GdkX11, GstVideo, GstBase
-
 import pygtk
 
 GObject.threads_init()
 Gst.init(None)
 
-class SubDataSink(GstBase.BaseSink):
-	__gstmetadata__ = ('SubDataSink','Sink', 'Subtitle Data Sink Element', 'Daniel Bailey')
-
-	__gsttemplates__ = Gst.PadTemplate.new("sink",
-										Gst.PadDirection.SINK,
-										Gst.PadPresence.ALWAYS,
-										Gst.Caps.new_any())
-
-	def do_render(self, buffer):
-		#print("timestamp(buffer):%s" % (Gst.TIME_ARGS(buffer.pts)))
-		print(buffer.extract_dup(0, buffer.get_size()))
-		return Gst.FlowReturn.OK
+from decoders import *
 
 
 class Main:
@@ -28,6 +16,26 @@ class Main:
 	def get_handy_widgets(self, widgets):
 		for widget in widgets:
 			setattr(self, widget, self.builder.get_object(widget))
+
+	def handle_data_event(self, event_id, event_data):
+		#TODO abstract this into data handling classes
+		if event_id == "text":
+			print(event_data)
+		if event_id == "speed":
+			#print(dir(self.lblStatus))
+			self.lblStatus.set_text("Speed: %s" % (event_data))
+
+
+	def handle_config_event(self, event_id, event_data):
+		pass
+
+	def handle_decode_error_event(self, event_id, event_data):
+		pass
+
+	def handle_decode_event(self, event_type, event_id, event_data):
+		if event_type == "data": self.handle_data_event(event_id, event_data)
+		if event_type == "config": self.handle_config_event(event_id, event_data)
+		if event_type == "decode_error": self.handle_decode_error_event(event_id, event_data)
 
 	def __init__(self):
 
@@ -59,19 +67,19 @@ class Main:
 		assert self.sink != None, ("Unable to create xvimagesink element.")
 		self.videosrc.set_property("video-sink", self.sink)
 
-		#self.sub_parser = Gst.ElementFactory.make('subparse', 'subdata')
-		#assert self.sub_parser != None, ("Unable to create subparse element.")
-		self.sub_data_sink = SubDataSink()
-		#self.videosrc.set_property("text-sink", self.sub_parser)
-		self.videosrc.set_property("text-sink", self.sub_data_sink)
-		#self.sub_parser.link(self.sub_data_sink)
+		# For now, assume RoadHawk camera
+		self.decoder = RoadHawk.RoadHawkDataDecoder(self.handle_decode_event)
+		self.decoder.pipeline_attach(self.videosrc)
+		#self.sub_data_sink = SubDataSink()
+		#self.videosrc.set_property("text-sink", self.sub_data_sink)
 
 		# Get the various widgets that we need to have handy
 		self.get_handy_widgets([
 				"videoAspectFrame",
 				"videoDrawingArea",
 				"fileChooser",
-				"seekBar"
+				"seekBar",
+				"lblStatus"
 			])
 
 		# Get the main window and show it
@@ -87,13 +95,13 @@ class Main:
 		taglist = message.parse_tag()
 		#put the keys in the dictionary
 		#for key in taglist.keys():
-		#	print("%s = %s" % (key, taglist[key]))
+		#   print("%s = %s" % (key, taglist[key]))
 		#print("Got message %r, dir is %s\n type is %s" % (message, dir(message), message.type))
 
 	def on_message(self, bus, message):
 		#print(message.type)
 		#if message.type == Gst.MessageType.WARNING:
-		#	print(message.parse_warning())
+		#   print(message.parse_warning())
 		#print("%r" % (message))
 		pass
 
