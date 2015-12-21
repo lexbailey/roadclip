@@ -15,8 +15,9 @@ class AbstractDataDecoder:
 			raise decoder_events.EventException("Invalid event ID '%s', accepted IDs are '%s'." % (event_id, ', '.join(event_ids)))
 		self._event_callback(event_type, event_id, event_data)
 
-	def get_name(self):
-		"""This function must return a string with a human readable name to indentify the decoder. 
+	@staticmethod
+	def get_label():
+		"""This static function must return a string with a human readable name to indentify the decoder. 
 		Typically this is the name of the supported camera"""
 		return "<unknown decoder>"
 

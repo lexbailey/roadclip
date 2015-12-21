@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import sys
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst, Gtk, GdkX11, GstVideo, GstBase
@@ -8,8 +9,12 @@ import pygtk
 GObject.threads_init()
 Gst.init(None)
 
+import decoders
 from decoders import *
 
+
+def get_class(module, str):
+	return getattr(sys.modules[module], str)
 
 class Main:
 
@@ -22,7 +27,6 @@ class Main:
 		if event_id == "text":
 			print(event_data)
 		if event_id == "speed":
-			#print(dir(self.lblStatus))
 			self.lblStatus.set_text("Speed: %s" % (event_data))
 
 
@@ -37,20 +41,35 @@ class Main:
 		if event_type == "config": self.handle_config_event(event_id, event_data)
 		if event_type == "decode_error": self.handle_decode_error_event(event_id, event_data)
 
-	def __init__(self):
+	def foo(self):
+		pass
 
+	def _init_state(self):
 		# initialise State
-		self.is_playing = False
-		self.was_playing = False
+		self.is_playing    = False
+		self.was_playing   = False
 		self.window_handle = 0
+		self.decoder       = None
 
+	def _init_gui(self):
 		# Load gui from gui.glade
 		self.builder = Gtk.Builder()
 		self.builder.add_from_file("gui.glade")
 		self.builder.connect_signals(self)
-		
+
+		# Get the various widgets that we need to have handy
+		self.get_handy_widgets([
+				"MainWindow",
+				"videoAspectFrame",
+				"videoDrawingArea",
+				"fileChooser",
+				"seekBar",
+				"lblStatus",
+				"decoderMenu"
+			])
+
+	def _init_gst_pipeline(self):
 		# Gstreamer init
-		#self.pipeline = gst.Pipeline("mypipeline")
 
 		# Test video input
 		self.videosrc = Gst.ElementFactory.make("playbin", "video")
@@ -70,24 +89,50 @@ class Main:
 		# For now, assume RoadHawk camera
 		self.decoder = RoadHawk.RoadHawkDataDecoder(self.handle_decode_event)
 		self.decoder.pipeline_attach(self.videosrc)
-		#self.sub_data_sink = SubDataSink()
-		#self.videosrc.set_property("text-sink", self.sub_data_sink)
 
-		# Get the various widgets that we need to have handy
-		self.get_handy_widgets([
-				"videoAspectFrame",
-				"videoDrawingArea",
-				"fileChooser",
-				"seekBar",
-				"lblStatus"
-			])
+	def _init_decoder_selection_list(self):
+		# Construct the decoder menu from the list of decoders we have
+		self.decoder_classes = {}
+		self.decoder_menu_items = []
+		previtem = None
+		for decoder_name in decoders.__all__:
+			decoder_string = decoder_name + "DataDecoder"
+			self.decoder_classes[decoder_name] = get_class("decoders."+decoder_name, decoder_string)
+			newItem = Gtk.RadioMenuItem(label=self.decoder_classes[decoder_name].get_label(), group=previtem)
+			newItem.connect("toggled", self.on_decoder_change, decoder_name)
+			self.decoder_menu_items.append(newItem)
+			previtem = self.decoder_menu_items[-1]
 
+		for decoder_menu_item in self.decoder_menu_items:
+			self.decoderMenu.add_child(self.builder, decoder_menu_item, None)
+
+	def select_decoder(self, decoder_name):
+		if self.decoder != None:
+			self.decoder.pipeline_detach(self.videosrc)
+		self.decoder = self.decoder_classes[decoder_name](self.handle_decode_event)
+		self.decoder.pipeline_attach(self.videosrc)
+
+	def on_decoder_change(self, widget, name):
+		if widget.get_active():
+			print("Switch to decoder %s" % (name))
+			self.select_decoder(name)
+
+	def _init_decoder(self):
+		# TODO get previous / default decoder, instead of just the RoadHawk decoder
+		self.select_decoder("RoadHawk")
+
+	def __init__(self):
+		self._init_state()
+		self._init_gui()
+		self._init_gst_pipeline()
+		self.videosrc.set_state(Gst.State.READY)
+		self._init_decoder_selection_list()
+		self._init_decoder()
+		
 		# Get the main window and show it
-		self.window = self.builder.get_object("MainWindow")
-		self.window.show_all()
+		self.MainWindow.show_all()
 
 		# The pipeline has been constructed, set state to ready.
-		self.videosrc.set_state(Gst.State.READY)
 		self.openVideoFile("/home/daniel/roadclip/RawNormal.MP4")
 
 		
@@ -144,7 +189,6 @@ class Main:
 				width  = -1
 				height = -1
 				for cap in caps:
-					print(cap)
 					if  cap.has_field("width") and cap.has_field("height"):
 						width  = cap["width"]
 						height = cap["height"]

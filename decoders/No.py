@@ -1,6 +1,7 @@
 import abstract_decoder
 
-class NoDecoder(abstract_decoder.AbstractDataDecoder):
+class NoDataDecoder(abstract_decoder.AbstractDataDecoder):
 
-	def get_name(self):
-		return "No Decoder"
+	@staticmethod
+	def get_label():
+		return "No Decoder (Disable data features)"

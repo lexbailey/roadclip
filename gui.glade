@@ -117,6 +117,21 @@
                 </child>
               </object>
             </child>
+            <child>
+              <object class="GtkMenuItem" id="decoderMenuItem">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="tooltip_text" translatable="yes">Select the decoder to use for getting the live data during playback.</property>
+                <property name="label" translatable="yes">_Data decoder</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu" id="decoderMenu">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>

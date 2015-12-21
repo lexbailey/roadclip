@@ -64,8 +64,9 @@ class RoadHawkDataDecoder(abstract_decoder.AbstractDataDecoder):
 		abstract_decoder.AbstractDataDecoder.__init__(self, event_callback)
 		pass
 
-	def get_name(self):
-		return "RoadHawk"
+	@staticmethod
+	def get_label():
+		return "Road Hawk"
 
 	def pipeline_attach(self, pipeline):
 		self.sub_data_sink = SubDataSink()
